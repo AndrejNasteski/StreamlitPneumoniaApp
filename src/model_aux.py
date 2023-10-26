@@ -1,11 +1,14 @@
 import os
+from io import BytesIO
 
 import cv2
 import keras
 import numpy as np
+import requests
 import tensorflow as tf
 from keras.callbacks import ReduceLROnPlateau
 from keras.preprocessing.image import ImageDataGenerator
+from PIL import Image
 
 MODEL_PATH = r"files\model"
 IMAGE_SIZE = 150
@@ -40,7 +43,7 @@ def classify_image(image):
     return prediction_text, probability[0][0]
 
 
-def retrain_model(images_db):
+def retrain_model(image_list):
     x_val = []
     y_val = []
     for i in range(1, 8):
@@ -61,54 +64,37 @@ def retrain_model(images_db):
     x_val = x_val.reshape(-1, IMAGE_SIZE, IMAGE_SIZE, 1)
     y_val = np.array(y_val)
 
-    db_keys = images_db.keys()
-
     data = []
     labels = []
-    for image_name in db_keys:
-        if image_name + ".jpeg" not in os.listdir(DB_IMAGES):
-            continue
-        image = cv2.imread(
-            os.path.join(DB_IMAGES, image_name + ".jpeg"), cv2.IMREAD_GRAYSCALE
-        )
-        image = cv2.resize(image, (IMAGE_SIZE, IMAGE_SIZE))
-        image_array = np.array(image) / 255
-        print(image_array.shape)
-        # image_array = image_array[:, :, 0]
-        db_entry = images_db.get(image_name)
 
-        if (
-            db_entry["Model_label"] != "" and db_entry["User_label"] == ""
-        ):  # image classified by model
-            if db_entry["Model_label"] == "NORMAL":
-                labels.append(1)
-            elif db_entry["Model_label"] == "PNEUMONIA":
-                labels.append(0)
-            else:
-                print(f"Error in database labels. Image name: {image_name}")
-                continue  # skip data entry
-            data.append(image_array)
-            print("first")
-        elif (
-            db_entry["Model_label"] != "" and db_entry["User_label"] != ""
-        ):  # image labeled by user
-            if db_entry["User_label"] == "NORMAL":
-                labels.append(1)
-            elif db_entry["User_label"] == "PNEUMONIA":
-                labels.append(0)
-            else:
-                print(f"Error in database labels. Image name: {image_name}")
-                continue  # skip data entry
-            data.append(image_array)
-            print("second")
-        elif db_entry["Model_label"] == "":
-            print(f"Error in classification of image. Image name: {image_name}")
-            print("third")
-            continue
+    for image_entry in image_list:
+        image = Image.open(BytesIO(requests.get(image_entry[0]).content)).convert("L")
+        image = cv2.resize(np.array(image), (IMAGE_SIZE, IMAGE_SIZE))
+        image_array = np.array(image) / 255
+        # image_array = image_array[:, :, 0]
+
+        if image_entry[1] != "":
+            if image_entry[2] != "":  # user label
+                if image_entry[2] == "NORMAL":
+                    labels.append(1)
+                elif image_entry[2] == "PNEUMONIA":
+                    labels.append(0)
+                else:
+                    print("Error in database labels.")
+                    continue  # skip data entry
+                data.append(image_array)
+            else:  # model label
+                if image_entry[1] == "NORMAL":
+                    labels.append(1)
+                elif image_entry[1] == "PNEUMONIA":
+                    labels.append(0)
+                else:
+                    print("Error in database labels.")
+                    continue  # skip data entry
+                data.append(image_array)
         else:
-            print(f"Database entry error. Image name: {image_name}")
-            print("fourth")
-            continue
+            print("Error in database labels.")
+            continue  # skip data entry
 
     data = np.array(data)
     data = data.reshape(-1, IMAGE_SIZE, IMAGE_SIZE, 1)

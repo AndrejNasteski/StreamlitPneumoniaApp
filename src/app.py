@@ -14,7 +14,9 @@ from model_aux import classify_image, retrain_model
 ROLES = ["USER", "MODERATOR", "ADMIN"]
 
 load_dotenv()
-st.set_page_config(layout="wide")
+st.set_page_config(
+    layout="wide", page_title="Pneumonia Detection App", page_icon=":lungs:"
+)
 
 firebaseConfig = {
     "apiKey": os.environ.get("apiKey"),
@@ -25,7 +27,6 @@ firebaseConfig = {
     "appId": os.environ.get("appId"),
     "measurementId": os.environ.get("measurementId"),
     "databaseURL": os.environ.get("databaseURL"),
-    "serviceAccount": os.environ.get("serviceAccount"),
 }
 
 
@@ -47,21 +48,21 @@ if "image_id_db" not in st.session_state:
     st.session_state["image_id_db"] = None
 
 with st.sidebar:
-    st.header("Pneumonia Detection App")
+    st.title(":medical_symbol: Pneumonia Detection App")
     login_tab, register_tab = st.tabs(["Login", "Register"])
 
     with login_tab:
         with st.form(key="Login", clear_on_submit=True):
             email_login = st.text_input("E-mail")
-            password_login = st.text_input("Password")
+            password_login = st.text_input("Password", type="password")
             login_submit = st.form_submit_button("Login")
 
     with register_tab:
         with st.form(key="Register", clear_on_submit=True):
             email_register = st.text_input("Enter E-mail")
             username_register = st.text_input("Enter Username")
-            password_register = st.text_input("Enter Password")
-            confirm_password = st.text_input("Confirm Password")
+            password_register = st.text_input("Enter Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
             register_submit = st.form_submit_button("Register")
 
     if register_submit:
@@ -77,7 +78,7 @@ with st.sidebar:
                 data = {
                     "ID": user["localId"],
                     "Username": username_register,
-                    "Role": ROLES[2],
+                    "Role": ROLES[0],  # user role
                 }
                 db.child("users").child(user["localId"]).set(data)
                 st.success(
@@ -121,13 +122,15 @@ with st.sidebar:
 
 col1, col2 = st.columns([1, 2])
 with col1:
-    st.write(st.session_state.get("user_role"))  # ----------------------------- testing
-
     file = st.file_uploader(
         "Upload an image:",
         type=["png", "jpg"],
         disabled=(st.session_state["user"] is None),
     )
+
+    if not file:
+        st.session_state["image_id_db"] = None
+
     btc1, btc2 = st.columns([1, 1])
     btc3, btc4 = st.columns([1, 1])
 
@@ -150,7 +153,10 @@ with col1:
             id = str(int(datetime.now().timestamp() * 1000))
             st.session_state["image_id_db"] = id
 
-            storage.child("images").child(id).put(file)
+            upload = storage.child("images").child(id).put(file)
+            image_url = (
+                storage.child("images").child(id).get_url(upload["downloadTokens"])
+            )
             image = Image.open(file)
             y, y_prob = classify_image(image)
             data = {
@@ -158,6 +164,7 @@ with col1:
                 "Created_at": str(datetime.now()),
                 "Model_label": y,
                 "User_label": "",
+                "Image_URL": image_url,
             }
             db.child("images").child(id).set(data)
 
@@ -206,24 +213,28 @@ with col1:
             st.rerun()
 
     if retrain_button:
-        progress_bar = st.progress(0, "Downloading images...")
         images_db = db.child("images").get().val()  # Database entry
-        blob_list = storage.list_files()  # Actual image
-        for i, image_file in enumerate(blob_list):
-            if i == 0:  # root directory, not image
-                continue
-            if i > 10:  # change this --------------------------------
-                break
-            image_file.download_to_filename(
-                f"files/temp/{image_file.name.split('/')[1]}.jpeg"
+        image_keys = images_db.keys()
+        image_list = []
+        key_count = len(image_keys)
+        progress_bar = st.progress(0, "Fetching images...")
+
+        for i, key in enumerate(image_keys):
+            image_list.append(
+                [
+                    images_db[key]["Image_URL"],
+                    images_db[key]["Model_label"],
+                    images_db[key]["User_label"],
+                ]
             )
-        progress_bar.progress(25, "Images downloaded, loading and training model...")
-        return_message = retrain_model(images_db)
-        time.sleep(2)
-        progress_bar.progress(100, "Model successfully re-trained on new data")
-        time.sleep(2)
+            progress_bar.progress(int((i / key_count) * 100), "Fetching images...")
         progress_bar.empty()
+
+        with st.spinner("Images downloaded, loading and training model..."):
+            return_message = retrain_model(image_list)
+
         st.info(return_message)
+        time.sleep(2)
 
 
 with col2:
