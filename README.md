@@ -1,5 +1,11 @@
 # StreamlitPneumoniaApp
 
+Pneumonia Detection App using Streamlit.
+After registering and logging in, the user can upload a image of a lung xray.
+The image is then classified as normal (healty) or lungs with pneumonia.
+Users with 'moderator' privileges can label uploaded images.
+Users with 'admin' privileges can choose to retrain the model using the newly aquired data.
+
 Install dependencies:
 ``` pip install pip-tools
     pip-sync requirements.txt
@@ -20,6 +26,6 @@ The .env file contains the Firebase configuration and the databaseURL.
 
 Steps to configure Firebase service Account:
 
-    YourFirebaseProject -> Project settings -> Service accounts -> Generate new Private keys
-    Download that .json file to the root app directory and name it Firebase_Service_Account_Keys.json
-    In .env file add the key "serviceAccount" and set the value as "Firebase_Service_Account_Keys.json"
+YourFirebaseProject -> Project settings -> Service accounts -> Generate new Private keys
+Download that .json file to the root app directory and name it Firebase_Service_Account_Keys.json
+In .env file add the key "serviceAccount" and set the value as "Firebase_Service_Account_Keys.json"
