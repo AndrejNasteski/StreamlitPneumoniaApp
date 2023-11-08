@@ -1,10 +1,10 @@
 # StreamlitPneumoniaApp
 
 Pneumonia Detection App using Streamlit.
-After registering and logging in, the user can upload a image of a lung xray.
-The image is then classified as normal (healty) or lungs with pneumonia.
+After registering and logging in, the user can upload a image of a lung x-ray.
+The image is then classified as normal (healthy) or lungs with pneumonia.
 Users with 'moderator' privileges can label uploaded images.
-Users with 'admin' privileges can choose to retrain the model using the newly aquired data.
+Users with 'admin' privileges can choose to retrain the model using the newly acquired data.
 
 Install dependencies:
 ``` pip install pip-tools
