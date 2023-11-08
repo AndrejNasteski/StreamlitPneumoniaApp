@@ -36,9 +36,16 @@ db = firebase.database()
 storage = firebase.storage()
 
 
-if "user" not in st.session_state:
+def reset_user_session():
     st.session_state["user"] = None
     st.session_state["user_role"] = None
+    st.session_state["username"] = None
+
+
+if "user" not in st.session_state:
+    reset_user_session()
+
+if st.session_state["user"] == None:
     st.info("Log in to upload an image.")
 
 if "label_button_enabled" not in st.session_state:
@@ -49,13 +56,14 @@ if "image_id_db" not in st.session_state:
 
 with st.sidebar:
     st.title(":medical_symbol: Pneumonia Detection App")
+
     login_tab, register_tab = st.tabs(["Login", "Register"])
 
     with login_tab:
         with st.form(key="Login", clear_on_submit=True):
             email_login = st.text_input("E-mail")
             password_login = st.text_input("Password", type="password")
-            login_submit = st.form_submit_button("Login")
+            login_submit = st.form_submit_button("Login", use_container_width=True)
 
     with register_tab:
         with st.form(key="Register", clear_on_submit=True):
@@ -63,7 +71,9 @@ with st.sidebar:
             username_register = st.text_input("Enter Username")
             password_register = st.text_input("Enter Password", type="password")
             confirm_password = st.text_input("Confirm Password", type="password")
-            register_submit = st.form_submit_button("Register")
+            register_submit = st.form_submit_button(
+                "Register", use_container_width=True
+            )
 
     if register_submit:
         if username_register == "":
@@ -99,7 +109,7 @@ with st.sidebar:
     if login_submit:
         try:
             user = auth.sign_in_with_email_and_password(email_login, password_login)
-            user_role = (
+            user_db = (
                 db.child("users")
                 .order_by_key()
                 .equal_to(user["localId"])
@@ -107,9 +117,11 @@ with st.sidebar:
                 .get()
             )
             st.session_state["user"] = user
-            st.session_state["user_role"] = user_role.val()[user["localId"]]["Role"]
+            st.session_state["user_role"] = user_db.val()[user["localId"]]["Role"]
+            st.session_state["username"] = user_db.val()[user["localId"]]["Username"]
             st.success("Logged in.")
             time.sleep(1)
+            st.rerun()
         except HTTPError as e:
             error = json.loads(e.args[1])["error"]["message"]
             if error == "INVALID_LOGIN_CREDENTIALS":
@@ -119,6 +131,20 @@ with st.sidebar:
             elif error == "MISSING_PASSWORD":
                 st.error("Missing password.")
 
+    with st.container():  # display username and logout button
+        if st.session_state["user"] == None:
+            display_username = "Not logged in."
+        else:
+            display_username = "Logged in as: " + st.session_state["username"]
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.write(display_username)
+        with c2:
+            if st.session_state["user"] is not None:
+                logout_placeholder = st.button(
+                    "Log out", on_click=reset_user_session, use_container_width=True
+                )
 
 col1, col2 = st.columns([1, 2])
 with col1:
@@ -139,6 +165,7 @@ with col1:
             "Classify Image",
             type="primary",
             disabled=st.session_state["user"] is None or not file,
+            use_container_width=True,
         )
     with btc2:
         retrain_button = st.button(
@@ -146,6 +173,7 @@ with col1:
             type="primary",
             disabled=st.session_state["user"] is None
             or st.session_state["user_role"] != ROLES[2],
+            use_container_width=True,
         )
 
     if file and classify_button:
@@ -179,6 +207,7 @@ with col1:
             or st.session_state["user_role"] == ROLES[0]
             or not file
             or st.session_state["image_id_db"] is None,
+            use_container_width=True,
         )
     with btc4:
         label_as_pneumonia_button = st.button(
@@ -187,6 +216,7 @@ with col1:
             or st.session_state["user_role"] == ROLES[0]
             or not file
             or st.session_state["image_id_db"] is None,
+            use_container_width=True,
         )
 
     if label_as_normal_button:
@@ -240,5 +270,5 @@ with col1:
 with col2:
     if file:
         image = Image.open(file)
-        new_image = image.resize((1000, 700))
+        new_image = image.resize((1000, 650))
         st.image(new_image)
