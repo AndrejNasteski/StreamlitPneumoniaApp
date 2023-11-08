@@ -169,7 +169,7 @@ with col1:
             db.child("images").child(id).set(data)
 
         image_classification = f"Image classified as: {y}."
-        image_probability = f"Class prediction probability: {y_prob * 100:.2f}%."
+        image_probability = f"Class prediction certainty: {y_prob * 100:.2f}%."
         st.info(image_classification + "\n" + image_probability)
 
     with btc3:
