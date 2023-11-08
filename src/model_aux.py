@@ -9,6 +9,7 @@ import tensorflow as tf
 from keras.callbacks import ReduceLROnPlateau
 from keras.preprocessing.image import ImageDataGenerator
 from PIL import Image
+from scipy.stats import entropy
 
 MODEL_PATH = r"files\model"
 IMAGE_SIZE = 150
@@ -38,9 +39,10 @@ def classify_image(image):
         prediction_text = "NORMAL"
         # probability = prediction
 
-    probability = abs(prediction - 0.5) * 2
+    # probability = abs(prediction - 0.5) * 2      # linear
+    entropy_information = entropy([prediction, 1 - prediction], base=2)
 
-    return prediction_text, probability[0][0]
+    return prediction_text, (1 - entropy_information[0][0])
 
 
 def retrain_model(image_list):
